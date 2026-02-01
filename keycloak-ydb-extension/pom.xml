@@ -23,7 +23,7 @@
     <ydb-jdbc-driver.version>2.3.20</ydb-jdbc-driver.version>
 
     <hikaricp.version>7.0.2</hikaricp.version>
-    <hibernate.ydb.dialect.version>1.5.1</hibernate.ydb.dialect.version>
+    <hibernate.ydb.dialect.version>1.5.2</hibernate.ydb.dialect.version>
   </properties>
 
   <build>

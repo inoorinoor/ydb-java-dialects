@@ -6,6 +6,9 @@ import org.hibernate.boot.registry.StandardServiceRegistryBuilder
 import org.hibernate.cfg.AvailableSettings
 import org.hibernate.cfg.Configuration
 import org.jboss.logging.Logger
+import tech.ydb.hibernate.dialect.YdbDialect
+import tech.ydb.jdbc.YdbDriver
+
 
 object EntityManagerUtils {
   private val logger = Logger.getLogger(EntityManagerUtils::class.java)
@@ -15,7 +18,8 @@ object EntityManagerUtils {
 
     val configuration = Configuration()
 
-    configuration.setProperty(AvailableSettings.DIALECT, "tech.ydb.hibernate.dialect.YdbDialect")
+    configuration.setProperty(AvailableSettings.DRIVER, YdbDriver::class.java.name)
+    configuration.setProperty(AvailableSettings.DIALECT, YdbDialect::class.java.name)
     configuration.setProperty(AvailableSettings.HBM2DDL_AUTO, "none")
     configuration.setProperty(AvailableSettings.SHOW_SQL, showSql)
     configuration.setProperty(AvailableSettings.FORMAT_SQL, formatSql)
