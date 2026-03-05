@@ -491,4 +491,14 @@ public abstract class KeycloakModelTest {
         }
         return s.realms().createRealm(name);
     }
+
+    /**
+     * Moves time on the Keycloak server
+     * @param seconds time offset in seconds by which Keycloak server time is moved
+     */
+    protected void setTimeOffset(int seconds) {
+        inComittedTransaction(session -> {
+            Time.setOffset(seconds);
+        });
+    }
 }
