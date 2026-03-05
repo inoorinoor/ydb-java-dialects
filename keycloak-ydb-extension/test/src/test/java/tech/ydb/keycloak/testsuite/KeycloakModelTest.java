@@ -433,6 +433,16 @@ public abstract class KeycloakModelTest {
         return MODEL_PARAMETERS.stream().flatMap(mp -> mp.getParameters(clazz)).filter(Objects::nonNull);
     }
 
+    protected <T> void inRolledBackTransaction(T parameter, BiConsumer<KeycloakSession, T> what) {
+        try (KeycloakSession session = getFactory().create()) {
+            session.getTransactionManager().begin();
+
+            what.accept(session, parameter);
+
+            session.getTransactionManager().setRollbackOnly();
+        }
+    }
+
     protected <T, R> R inComittedTransaction(T parameter, BiFunction<KeycloakSession, T, R> what) {
         return inComittedTransaction(parameter, what, null);
     }
