@@ -247,4 +247,7 @@
   <changeSet id="2026-02-15-15-29-create-user-federation-mapper-config-table" author="keycloak-ydb-extension">
     <sqlFile path="ydb/changesets/2026-02-15-15-29-create-user-federation-mapper-config-table.sql"/>
   </changeSet>
+  <changeSet id="2026-03-06-00-21-create-admin-event-entity-table" author="keycloak-ydb-extension">
+    <sqlFile path="ydb/changesets/2026-03-06-00-21-create-admin-event-entity-table.sql"/>
+  </changeSet>
 </databaseChangeLog>
