@@ -24,6 +24,9 @@ import org.keycloak.models.dblock.DBLockProvider
 import org.keycloak.models.utils.KeycloakModelUtils
 import org.keycloak.provider.ServerInfoAwareProviderFactory
 import tech.ydb.hibernate.dialect.YdbDialect
+import tech.ydb.hibernate.dialect.YdbSettings
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import tech.ydb.jdbc.YdbDriver
 import tech.ydb.keycloak.config.ProviderConfig.PROVIDER_ID
 import tech.ydb.keycloak.config.ProviderConfig.PROVIDER_PRIORITY
@@ -44,6 +47,8 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
 
   @Volatile
   private lateinit var entityManagerFactory: EntityManagerFactory
+
+  private var dataSource: HikariDataSource? = null
 
   override fun create(session: KeycloakSession): JpaConnectionProvider {
     val emf = getOrCreateEntityManagerFactory(session)
@@ -142,6 +147,7 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
     if (::entityManagerFactory.isInitialized) {
       entityManagerFactory.close()
     }
+    dataSource?.close()
   }
 
   override fun getId(): String = PROVIDER_ID
@@ -205,8 +211,16 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
   private fun buildPropertiesFromScope(): MutableMap<String, Any> {
     val properties = mutableMapOf<String, Any>()
 
-    properties[AvailableSettings.JAKARTA_JDBC_URL] = resolveJdbcUrl()
-    properties[AvailableSettings.JAKARTA_JDBC_DRIVER] = YdbDriver::class.java.name
+    val hikariConfig = HikariConfig().apply {
+      jdbcUrl = resolveJdbcUrl()
+      driverClassName = YdbDriver::class.java.name
+      maximumPoolSize = config.getInt("poolSize", DEFAULT_POOL_SIZE)
+      connectionTimeout = config.getLong("connectionTimeout", DEFAULT_CONNECTION_TIMEOUT_MS)
+    }
+    dataSource = HikariDataSource(hikariConfig)
+    properties[AvailableSettings.JAKARTA_NON_JTA_DATASOURCE] = dataSource!!
+
+    properties[YdbSettings.IGNORE_LOCK_HINTS] = true
 
     getSchema()?.let { properties[JpaUtils.HIBERNATE_DEFAULT_SCHEMA] = it }
 
@@ -309,5 +323,7 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
     }
 
     const val PERSISTENCE_UNIT_NAME = "keycloak-default"
+    const val DEFAULT_POOL_SIZE = 30
+    const val DEFAULT_CONNECTION_TIMEOUT_MS = 30000L
   }
 }

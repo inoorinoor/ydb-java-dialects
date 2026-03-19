@@ -44,6 +44,8 @@ services:
     command: >
       -v start-dev
       --cache=local
+    environment:
+      - JAVA_OPTS_APPEND=-javaagent:/opt/keycloak/providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar
     ports:
       - 9090:8080
     networks:

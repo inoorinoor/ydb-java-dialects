@@ -106,11 +106,18 @@
                   <include>tech.ydb.dialects:*</include>
                   <include>com.zaxxer:HikariCP</include>
                   <include>io.r2dbc:*</include>
+                  <include>net.bytebuddy:*</include>
                 </includes>
               </artifactSet>
 
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <manifestEntries>
+                    <Premain-Class>tech.ydb.keycloak.retry.YdbRetryAgent</Premain-Class>
+                    <Can-Retransform-Classes>true</Can-Retransform-Classes>
+                  </manifestEntries>
+                </transformer>
               </transformers>
             </configuration>
           </execution>
@@ -190,6 +197,12 @@
       <groupId>com.zaxxer</groupId>
       <artifactId>HikariCP</artifactId>
       <version>${hikaricp.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>net.bytebuddy</groupId>
+      <artifactId>byte-buddy</artifactId>
+      <version>1.17.5</version>
     </dependency>
 
     <!-- tests -->
