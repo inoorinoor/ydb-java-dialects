@@ -21,6 +21,10 @@ class YdbLiquibaseConnectionProvider : DefaultLiquibaseConnectionProvider() {
   override fun init(config: Config.Scope) {
     indexCreationThreshold = config.getLong("indexCreationThreshold", DEFAULT_INDEX_CREATION_THRESHOLD)
     logger.debugf("indexCreationThreshold is %d", indexCreationThreshold)
+
+    // Keycloak loads the provider JAR via multiple classpath entries (e.g. providers/ and lib/../providers/)
+    // causing Liquibase to see the same changelog file twice. Allow duplicates since they are the same file.
+    System.setProperty("liquibase.duplicateFileMode", "WARN")
   }
 
   override fun getId(): String = PROVIDER_ID
