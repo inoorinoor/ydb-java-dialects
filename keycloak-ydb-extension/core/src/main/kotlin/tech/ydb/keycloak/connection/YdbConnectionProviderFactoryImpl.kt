@@ -197,8 +197,19 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
       val properties = buildPropertiesFromScope()
 
       entityManagerFactory = JpaUtils.createEntityManagerFactory(session, PERSISTENCE_UNIT_NAME, properties, jtaEnabled)
+      addSpecificNamedQueries()
       logger.info("YDB EntityManagerFactory created via JpaUtils")
       return entityManagerFactory
+    }
+  }
+
+  /**
+   * Load YDB-specific named query overrides from META-INF/queries-ydb.properties.
+   * Follows the same pattern as DefaultJpaConnectionProviderFactory.addSpecificNamedQueries().
+   */
+  private fun addSpecificNamedQueries() = entityManagerFactory.createEntityManager().use { em ->
+    JpaUtils.loadSpecificNamedQueries(DB_KIND).forEach { (queryName, querySql) ->
+      JpaUtils.configureNamedQuery(queryName.toString(), querySql.toString(), em)
     }
   }
 
@@ -309,5 +320,6 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
     }
 
     const val PERSISTENCE_UNIT_NAME = "keycloak-default"
+    const val DB_KIND = "ydb"
   }
 }
