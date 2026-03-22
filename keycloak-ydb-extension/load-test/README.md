@@ -36,7 +36,7 @@ This builds core + retry-proxy, copies the JAR, and starts Docker Compose (YDB +
 Wait for Keycloak to start (~30-60s). Check logs:
 
 ```bash
-docker compose -f docker/docker-compose.yml logs -f keycloak
+docker compose -f docker/docker-compose.yml logs -f ydb-keycloak
 ```
 
 Services:
