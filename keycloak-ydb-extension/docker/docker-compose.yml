@@ -38,6 +38,8 @@ services:
   ydb-keycloak:
     image: quay.io/keycloak/keycloak:26.4.7
     container_name: ydb-keycloak
+    expose:
+      - '8080'
     volumes:
       - ./providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar
       - ./conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf
