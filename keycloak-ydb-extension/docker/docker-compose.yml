@@ -35,8 +35,9 @@ services:
       timeout: 5s
       retries: 5
 
-  keycloak:
+  ydb-keycloak:
     image: quay.io/keycloak/keycloak:26.4.7
+    container_name: ydb-keycloak
     volumes:
       - ./providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar
       - ./conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf
@@ -54,7 +55,7 @@ services:
     build:
       context: ../retry-proxy
     environment:
-      - TARGET_URL=http://keycloak:8080
+      - TARGET_URL=http://ydb-keycloak:8080
       - MAX_RETRIES=10
       - BASE_DELAY_MS=50
       - MAX_DELAY_MS=2000
@@ -64,4 +65,4 @@ services:
     networks:
       - keycloak
     depends_on:
-      - keycloak
+      - ydb-keycloak
