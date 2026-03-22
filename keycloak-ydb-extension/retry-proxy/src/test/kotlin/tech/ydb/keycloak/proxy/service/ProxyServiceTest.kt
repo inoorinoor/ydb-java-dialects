@@ -38,6 +38,8 @@ class ProxyServiceTest {
     contentType = ContentType.Application.Json,
     headers = headersOf(),
     host = "localhost:9090",
+    remoteHost = "127.0.0.1",
+    scheme = "http",
   )
 
   @Test
@@ -163,7 +165,7 @@ class ProxyServiceTest {
   }
 
   @Test
-  fun setsForwardedHeaders() = runTest {
+  fun setsForwardedHeader() = runTest {
     var capturedHeaders: Headers? = null
     val service = proxyService(mockClient { request ->
       capturedHeaders = request.headers
@@ -171,9 +173,7 @@ class ProxyServiceTest {
     })
 
     doRequest(service)
-    assertEquals("localhost:9090", capturedHeaders!!["X-Forwarded-Host"])
-    assertEquals("http", capturedHeaders!!["X-Forwarded-Proto"])
-    assertEquals("9090", capturedHeaders!!["X-Forwarded-Port"])
+    assertEquals("for=127.0.0.1;host=localhost:9090;proto=http", capturedHeaders!![HttpHeaders.Forwarded])
   }
 
   @Test
@@ -198,6 +198,8 @@ class ProxyServiceTest {
         HttpHeaders.Authorization to listOf("Bearer token"),
       ),
       host = "localhost:9090",
+      remoteHost = "127.0.0.1",
+      scheme = "http",
     )
 
     assertNull(capturedHeaders!![HttpHeaders.Connection])

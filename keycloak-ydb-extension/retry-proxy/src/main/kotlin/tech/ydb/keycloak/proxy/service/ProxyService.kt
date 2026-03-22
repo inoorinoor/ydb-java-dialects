@@ -4,6 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.http.HttpHeaders.Forwarded
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import org.slf4j.LoggerFactory
@@ -28,6 +29,8 @@ class ProxyService(
     contentType: ContentType,
     headers: Headers,
     host: String,
+    remoteHost: String,
+    scheme: String,
   ): ProxyResult {
     for (attempt in 0..config.maxRetries) {
       if (!coroutineContext.isActive) {
@@ -36,7 +39,7 @@ class ProxyService(
       }
 
       val response = try {
-        forwardToTarget(method, path, body, contentType, headers, host)
+        forwardToTarget(method, path, body, contentType, headers, host, remoteHost, scheme)
       } catch (e: Exception) {
         return Error("Proxy error: ${e.message}")
       }
@@ -76,13 +79,13 @@ class ProxyService(
     contentType: ContentType,
     headers: Headers,
     host: String,
+    remoteHost: String,
+    scheme: String,
   ): HttpResponse = client.request("${config.targetUrl}$path") {
     this.method = method
 
     copyHeaders(headers)
-    header("X-Forwarded-Host", host)
-    header("X-Forwarded-Proto", "http")
-    header("X-Forwarded-Port", host.substringAfter(":", "80"))
+    header(Forwarded, "for=$remoteHost;host=$host;proto=$scheme")
 
     setBody(OutgoingByteArrayContent(body, contentType))
   }

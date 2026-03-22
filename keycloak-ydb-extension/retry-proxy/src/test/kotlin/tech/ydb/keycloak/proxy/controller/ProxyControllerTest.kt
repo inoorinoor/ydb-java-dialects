@@ -49,7 +49,7 @@ class ProxyControllerTest {
 
   @Test
   fun forwardsSuccessResponse() = withProxy {
-    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any()) } returns
+    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any(), any(), any()) } returns
       Success(
         body = "hello".toByteArray(),
         headers = headersOf(),
@@ -65,7 +65,7 @@ class ProxyControllerTest {
 
   @Test
   fun returnsErrorAsBadGateway() = withProxy {
-    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any()) } returns
+    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any(), any(), any()) } returns
       Error("connection refused")
 
     client.get("/fail").let {
@@ -76,7 +76,7 @@ class ProxyControllerTest {
 
   @Test
   fun filtersHopByHopHeaders() = withProxy {
-    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any()) } returns
+    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any(), any(), any()) } returns
       Success(
         body = "ok".toByteArray(),
         headers = headersOf(
@@ -100,7 +100,7 @@ class ProxyControllerTest {
 
   @Test
   fun rewritesLocationHeader() = withProxy {
-    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any()) } returns
+    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any(), any(), any()) } returns
       Success(
         body = ByteArray(0),
         headers = headersOf(HttpHeaders.Location, "http://backend:8080/realms/master"),
@@ -117,7 +117,7 @@ class ProxyControllerTest {
 
   @Test
   fun clientDisconnectedReturnsNothing() = withProxy {
-    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any()) } returns
+    coEvery { proxyService.proxyRequest(any(), any(), any(), any(), any(), any(), any(), any()) } returns
       ClientDisconnected
 
     client.get("/disconnect").let {

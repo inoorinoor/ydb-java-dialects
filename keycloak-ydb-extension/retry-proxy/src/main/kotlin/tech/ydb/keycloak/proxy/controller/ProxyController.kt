@@ -20,8 +20,10 @@ class ProxyController(
     val body = call.receive<ByteArray>()
     val contentType = call.request.contentType()
     val host = call.request.headers["Host"] ?: call.request.host()
+    val remoteHost = call.request.local.remoteHost
+    val scheme = call.request.local.scheme
 
-    val result = proxyService.proxyRequest(method, path, body, contentType, call.request.headers, host)
+    val result = proxyService.proxyRequest(method, path, body, contentType, call.request.headers, host, remoteHost, scheme)
 
     when (result) {
       is Success -> call.handleSuccess(result)
