@@ -1,5 +1,7 @@
 package tech.ydb.keycloak.connection
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import jakarta.persistence.EntityManagerFactory
 import jakarta.persistence.SynchronizationType.SYNCHRONIZED
 import liquibase.GlobalConfiguration
@@ -28,8 +30,6 @@ import tech.ydb.keycloak.config.ProviderConfig.PROVIDER_ID
 import tech.ydb.keycloak.config.ProviderConfig.PROVIDER_PRIORITY
 import tech.ydb.keycloak.connection.YdbConnectionProviderFactoryImpl.Companion.MigrationStrategy.*
 import java.io.File
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*
@@ -226,7 +226,7 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
       maxLifetime = config.getLong("maxLifetime", 1800000)
     }
     dataSource = HikariDataSource(hikariConfig)
-    logger.infof("HikariCP pool created: maxSize=%d, minIdle=%d", hikariConfig.maximumPoolSize, hikariConfig.minimumIdle)
+    logger.info("HikariCP pool created: maxSize=${hikariConfig.maximumPoolSize}, minIdle=${hikariConfig.minimumIdle}")
 
     properties[AvailableSettings.JAKARTA_NON_JTA_DATASOURCE] = dataSource
 
