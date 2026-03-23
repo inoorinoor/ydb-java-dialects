@@ -1,6 +1,11 @@
 # Load Testing
 
-Load tests for Keycloak + YDB using [keycloak-benchmark](https://github.com/keycloak/keycloak-benchmark) (Gatling).
+Load tests for Keycloak using [keycloak-benchmark](https://github.com/keycloak/keycloak-benchmark) (Gatling).
+
+Supports three infrastructure configurations:
+- **Keycloak + Local YDB** — YDB in Docker, retry-proxy in front of Keycloak
+- **Keycloak + Remote YDB** — external YDB instance, retry-proxy in front of Keycloak
+- **Keycloak + PostgreSQL** — for comparison benchmarks
 
 ## Prerequisites
 
@@ -10,7 +15,7 @@ Load tests for Keycloak + YDB using [keycloak-benchmark](https://github.com/keyc
 
 ## Quick Start
 
-### 1. Download keycloak-benchmark
+## 1. Download keycloak-benchmark
 
 ```bash
 ./prepare.sh
@@ -23,9 +28,11 @@ To use a specific version:
 ./prepare.sh 26.4.0-SNAPSHOT
 ```
 
-### 2. Build and start infrastructure
+## 2. Start infrastructure
 
-From the `keycloak-ydb-extension/` root:
+All commands below are run from the `keycloak-ydb-extension/` root.
+
+### Option A: Keycloak + Local YDB
 
 ```bash
 ./run-keycloak-with-ydb.sh
@@ -39,77 +46,27 @@ Wait for Keycloak to start (~30-60s). Check logs:
 docker compose -f docker/docker-compose.yml logs -f ydb-keycloak
 ```
 
-Services:
-- Keycloak (via retry-proxy): http://localhost:9090
-- YDB Monitoring: http://localhost:8765
-- Admin credentials: `admin` / `admin`
+| Service | URL |
+|---------|-----|
+| Keycloak (via retry-proxy) | http://localhost:9090 |
+| YDB Monitoring | http://localhost:8765 |
 
-### 3. Setup test realm
+### Option B: Keycloak + Remote YDB
 
-```bash
-python3 setup-test-realm.py
-```
-
-Creates `test-realm` with clients (`gatling`, `client-0`, `test-client`), roles, groups, and test users.
-
-By default connects to `http://localhost:9090`. To use a different URL:
+Start YDB separately, e.g.:
 
 ```bash
-python3 setup-test-realm.py http://localhost:8080
-```
-
-### 4. Run load test
-
-```bash
-./run.sh <scenario> <users-per-sec> [measurement-sec] [server-url]
-```
-
-Examples:
-
-```bash
-./run.sh CreateUsers 30              # 30 rps, 60s measurement
-./run.sh CreateUsers 30 120          # 30 rps, 120s measurement
-./run.sh CreateDeleteUsers 10 60     # 10 rps, 60s
-```
-
-Results are saved to `results/` with Gatling HTML reports.
-
-### 5. Cleanup between runs
-
-Delete all users from test-realm:
-
-```bash
-python3 delete-all-users.py
-```
-
-## Alternative Infrastructure
-
-### Keycloak + PostgreSQL
-
-For comparison testing against PostgreSQL:
-
-```bash
-docker compose -f docker/docker-compose-pg.yml up -d
-```
-
-Services:
-- Keycloak: http://localhost:9091
-- Admin credentials: `admin` / `admin`
-
-### Keycloak + Remote YDB
-
-For connecting to an external YDB instance (not in Docker Compose):
-
-```bash
-# Start YDB separately, e.g.:
 docker run -d --rm --name ydb-local -h localhost \
   --platform linux/amd64 \
   -p 2135:2135 -p 2136:2136 -p 8765:8765 \
   -v $(pwd)/ydb_certs:/ydb_certs -v $(pwd)/ydb_data:/ydb_data \
   -e GRPC_TLS_PORT=2135 -e GRPC_PORT=2136 -e MON_PORT=8765 \
   ydbplatform/local-ydb:latest
+```
 
-# Then start Keycloak + retry-proxy:
+Then start Keycloak + retry-proxy:
+
+```bash
 YDB_JDBC_URL="jdbc:ydb:grpc://host.docker.internal:2136/local" \
   docker compose -f docker/docker-compose-remote-ydb.yml up -d --build
 ```
@@ -121,9 +78,58 @@ YDB_JDBC_URL="jdbc:ydb:grpcs://ydb.serverless.yandexcloud.net:2135/ru-central1/.
   docker compose -f docker/docker-compose-remote-ydb.yml up -d --build
 ```
 
-Services:
-- Keycloak (via retry-proxy): http://localhost:9090
-- Admin credentials: `admin` / `admin`
+| Service | URL |
+|---------|-----|
+| Keycloak (via retry-proxy) | http://localhost:9090 |
+
+### Option C: Keycloak + PostgreSQL
+
+```bash
+docker compose -f docker/docker-compose-pg.yml up -d
+```
+
+| Service | URL |
+|---------|-----|
+| Keycloak | http://localhost:9091 |
+
+Admin credentials for all options: `admin` / `admin`
+
+## 3. Setup test realm
+
+```bash
+python3 setup-test-realm.py                       # default: http://localhost:9090
+python3 setup-test-realm.py http://localhost:9091  # for PostgreSQL setup
+```
+
+Creates `test-realm` with clients (`gatling`, `client-0`, `test-client`), roles, groups, and test users.
+
+## 4. Run load test
+
+```bash
+./run.sh <scenario> <users-per-sec> [measurement-sec] [server-url]
+```
+
+Examples:
+
+```bash
+# Local YDB / Remote YDB (default server-url is http://localhost:9090)
+./run.sh CreateUsers 30
+./run.sh CreateUsers 30 120
+
+# PostgreSQL
+./run.sh CreateUsers 30 60 http://localhost:9091
+```
+
+Results are saved to `results/` with Gatling HTML reports.
+
+## 5. Cleanup between runs
+
+Delete all users from test-realm:
+
+```bash
+python3 delete-all-users.py                       # default: http://localhost:9090
+python3 delete-all-users.py http://localhost:9091  # for PostgreSQL setup
+```
 
 ## Available Scenarios
 
