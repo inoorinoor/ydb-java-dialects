@@ -3,6 +3,7 @@
 Load tests for Keycloak using [keycloak-benchmark](https://github.com/keycloak/keycloak-benchmark) (Gatling).
 
 Supports three infrastructure configurations:
+
 - **Keycloak + Local YDB** — YDB in Docker, retry-proxy in front of Keycloak
 - **Keycloak + Remote YDB** — external YDB instance, retry-proxy in front of Keycloak
 - **Keycloak + PostgreSQL** — for comparison benchmarks
@@ -46,10 +47,10 @@ Wait for Keycloak to start (~30-60s). Check logs:
 docker compose -f docker/docker-compose.yml logs -f ydb-keycloak
 ```
 
-| Service | URL |
-|---------|-----|
+| Service                    | URL                   |
+|----------------------------|-----------------------|
 | Keycloak (via retry-proxy) | http://localhost:9090 |
-| YDB Monitoring | http://localhost:8765 |
+| YDB Monitoring             | http://localhost:8765 |
 
 ### Option B: Keycloak + Remote YDB
 
@@ -78,8 +79,8 @@ YDB_JDBC_URL="jdbc:ydb:grpcs://ydb.serverless.yandexcloud.net:2135/ru-central1/.
   docker compose -f docker/docker-compose-remote-ydb.yml up -d --build
 ```
 
-| Service | URL |
-|---------|-----|
+| Service                    | URL                   |
+|----------------------------|-----------------------|
 | Keycloak (via retry-proxy) | http://localhost:9090 |
 
 ### Option C: Keycloak + PostgreSQL
@@ -88,8 +89,8 @@ YDB_JDBC_URL="jdbc:ydb:grpcs://ydb.serverless.yandexcloud.net:2135/ru-central1/.
 docker compose -f docker/docker-compose-pg.yml up -d
 ```
 
-| Service | URL |
-|---------|-----|
+| Service  | URL                   |
+|----------|-----------------------|
 | Keycloak | http://localhost:9091 |
 
 Admin credentials for all options: `admin` / `admin`
@@ -133,16 +134,17 @@ python3 delete-all-users.py http://localhost:9091  # for PostgreSQL setup
 
 ## Available Scenarios
 
-| Scenario | Description |
-|----------|-------------|
-| `CreateUsers` | Create user + List users |
-| `CreateDeleteUsers` | Create user + List users + Delete user |
-| `CreateClients` | Create client |
-| `CreateDeleteClients` | Create client + Delete client |
-| `ClientSecret` | Client credentials grant (authentication) |
-| `AuthorizationCode` | Authorization code flow (authentication) |
+| Scenario              | Description                               |
+|-----------------------|-------------------------------------------|
+| `CreateUsers`         | Create user + List users                  |
+| `CreateDeleteUsers`   | Create user + List users + Delete user    |
+| `CreateClients`       | Create client                             |
+| `CreateDeleteClients` | Create client + Delete client             |
+| `ClientSecret`        | Client credentials grant (authentication) |
+| `AuthorizationCode`   | Authorization code flow (authentication)  |
 
-Full list of scenarios: [keycloak-benchmark/scenario](https://github.com/keycloak/keycloak-benchmark/tree/main/benchmark/src/main/scala/keycloak/scenario)
+Full list of scenarios:
+[keycloak-benchmark/scenario](https://github.com/keycloak/keycloak-benchmark/tree/main/benchmark/src/main/scala/keycloak/scenario)
 
 ## Directory Structure
 
