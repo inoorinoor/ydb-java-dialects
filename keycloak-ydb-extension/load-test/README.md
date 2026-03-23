@@ -82,6 +82,49 @@ Delete all users from test-realm:
 python3 delete-all-users.py
 ```
 
+## Alternative Infrastructure
+
+### Keycloak + PostgreSQL
+
+For comparison testing against PostgreSQL:
+
+```bash
+docker compose -f docker/docker-compose-pg.yml up -d
+```
+
+Services:
+- Keycloak: http://localhost:9091
+- Admin credentials: `admin` / `admin`
+
+### Keycloak + Remote YDB
+
+For connecting to an external YDB instance (not in Docker Compose):
+
+```bash
+# Start YDB separately, e.g.:
+docker run -d --rm --name ydb-local -h localhost \
+  --platform linux/amd64 \
+  -p 2135:2135 -p 2136:2136 -p 8765:8765 \
+  -v $(pwd)/ydb_certs:/ydb_certs -v $(pwd)/ydb_data:/ydb_data \
+  -e GRPC_TLS_PORT=2135 -e GRPC_PORT=2136 -e MON_PORT=8765 \
+  ydbplatform/local-ydb:latest
+
+# Then start Keycloak + retry-proxy:
+YDB_JDBC_URL="jdbc:ydb:grpc://host.docker.internal:2136/local" \
+  docker compose -f docker/docker-compose-remote-ydb.yml up -d --build
+```
+
+For a cloud YDB instance:
+
+```bash
+YDB_JDBC_URL="jdbc:ydb:grpcs://ydb.serverless.yandexcloud.net:2135/ru-central1/..." \
+  docker compose -f docker/docker-compose-remote-ydb.yml up -d --build
+```
+
+Services:
+- Keycloak (via retry-proxy): http://localhost:9090
+- Admin credentials: `admin` / `admin`
+
 ## Available Scenarios
 
 | Scenario | Description |
