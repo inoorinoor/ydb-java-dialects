@@ -108,6 +108,34 @@
     </dependency>
   </dependencies>
 
+  <properties>
+    <!-- Default parameter classes: container-based YDB (Ydb) + federation + Infinispan.
+         Override via Maven profiles or directly: -Dkeycloak.model.parameters=... -->
+    <keycloak.model.parameters>Ydb,YdbFederation,Infinispan</keycloak.model.parameters>
+  </properties>
+
+  <profiles>
+    <!-- Default profile: YDB started via YdbHelperFactory (TestContainers).
+         Active when no other profile is selected. -->
+    <profile>
+      <id>ydb-container</id>
+      <properties>
+        <keycloak.model.parameters>Ydb,YdbFederation,Infinispan</keycloak.model.parameters>
+      </properties>
+    </profile>
+
+    <!-- Remote profile: connects to a pre-started YDB instance.
+         Start YDB first: docker compose -f docker/docker-compose.ydb-test.yml up -d
+         Then run: mvn test -P remote-ydb
+         Override the JDBC URL: mvn test -P remote-ydb -Dkeycloak.ydb.remote.jdbc.url=jdbc:ydb:grpc://host:port/db -->
+    <profile>
+      <id>remote-ydb</id>
+      <properties>
+        <keycloak.model.parameters>RemoteYdb,YdbFederation,Infinispan</keycloak.model.parameters>
+      </properties>
+    </profile>
+  </profiles>
+
   <build>
     <plugins>
       <plugin>
@@ -146,8 +174,7 @@
         <configuration>
           <argLine>-Xmx1536m -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED</argLine>
           <systemPropertyVariables>
-            <!-- our parameters class: enables YDB providers + starts YDB container -->
-            <keycloak.model.parameters>Ydb,YdbFederation,Infinispan</keycloak.model.parameters>
+            <keycloak.model.parameters>${keycloak.model.parameters}</keycloak.model.parameters>
             <log4j.configuration>file:${project.build.directory}/test-classes/log4j.properties</log4j.configuration>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <org.jboss.logging.provider>log4j</org.jboss.logging.provider>

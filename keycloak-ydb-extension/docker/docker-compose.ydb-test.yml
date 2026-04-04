@@ -1,0 +1,30 @@
+
+volumes:
+  ydb_test_data:
+    driver: local
+  ydb_test_certs:
+    driver: local
+
+services:
+  ydb-integration-tests:
+    image: ydbplatform/local-ydb:latest
+    platform: linux/amd64
+    hostname: localhost  # YDB advertises its hostname in discovery; must match what clients use
+    ports:
+      - '12136:12136'  # GRPC (insecure) — host and container ports must be equal (YDB limitation)
+      - '8765:8765'  # Monitoring UI
+    volumes:
+      - 'ydb_test_certs:/ydb_test_certs'
+      - 'ydb_test_data:/ydb_test_data'
+    environment:
+      - GRPC_PORT=12136  # must equal the host-side port above
+      - MON_PORT=8765
+
+#      - YDB_USE_IN_MEMORY_PDISKS=true
+#      - YDB_ENABLE_COLUMN_TABLES=true
+#    healthcheck:
+#      test: ["CMD", "ydb", "--endpoint", "grpc://localhost:2136", "--database", "/local", "scheme", "ls"]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 30s
