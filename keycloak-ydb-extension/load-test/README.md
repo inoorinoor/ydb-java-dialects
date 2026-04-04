@@ -2,11 +2,10 @@
 
 Load tests for Keycloak using [keycloak-benchmark](https://github.com/keycloak/keycloak-benchmark) (Gatling).
 
-Supports three infrastructure configurations:
+Supports two infrastructure configurations:
 
 - **Keycloak + Local YDB** — YDB in Docker, retry-proxy in front of Keycloak
 - **Keycloak + Remote YDB** — external YDB instance, retry-proxy in front of Keycloak
-- **Keycloak + PostgreSQL** — for comparison benchmarks
 
 ## Prerequisites
 
@@ -83,23 +82,17 @@ YDB_JDBC_URL="jdbc:ydb:grpcs://ydb.serverless.yandexcloud.net:2135/ru-central1/.
 |----------------------------|-----------------------|
 | Keycloak (via retry-proxy) | http://localhost:9090 |
 
-### Option C: Keycloak + PostgreSQL
-
-```bash
-docker compose -f docker/docker-compose-pg.yml up -d
-```
-
-| Service  | URL                   |
-|----------|-----------------------|
-| Keycloak | http://localhost:9091 |
-
 Admin credentials for all options: `admin` / `admin`
+
+### Comparison with other databases
+
+For benchmarking Keycloak with other databases (PostgreSQL, MySQL, etc.), use the setups from the keycloak-benchmark repository:
+[keycloak-benchmark](https://github.com/keycloak/keycloak-benchmark/tree/main/provision)
 
 ## 3. Setup test realm
 
 ```bash
 python3 setup-test-realm.py                       # default: http://localhost:9090
-python3 setup-test-realm.py http://localhost:9091  # for PostgreSQL setup
 ```
 
 Creates `test-realm` with clients (`gatling`, `client-0`, `test-client`), roles, groups, and test users.
@@ -113,12 +106,8 @@ Creates `test-realm` with clients (`gatling`, `client-0`, `test-client`), roles,
 Examples:
 
 ```bash
-# Local YDB / Remote YDB (default server-url is http://localhost:9090)
 ./run.sh CreateUsers 30
 ./run.sh CreateUsers 30 120
-
-# PostgreSQL
-./run.sh CreateUsers 30 60 http://localhost:9091
 ```
 
 Results are saved to `results/` with Gatling HTML reports.
@@ -128,8 +117,7 @@ Results are saved to `results/` with Gatling HTML reports.
 Delete all users from test-realm:
 
 ```bash
-python3 delete-all-users.py                       # default: http://localhost:9090
-python3 delete-all-users.py http://localhost:9091  # for PostgreSQL setup
+python3 delete-all-users.py
 ```
 
 ## Available Scenarios
