@@ -2,19 +2,15 @@ package tech.ydb.keycloak.liquibase
 
 import liquibase.Scope
 import liquibase.exception.DatabaseException
-import liquibase.exception.UnexpectedLiquibaseException
 import liquibase.executor.ExecutorService
 import liquibase.lockservice.StandardLockService
-import liquibase.statement.SqlStatement
 import liquibase.statement.core.CreateDatabaseChangeLogLockTableStatement
+import liquibase.statement.core.DeleteStatement
 import liquibase.statement.core.LockDatabaseChangeLogStatement
-import liquibase.statement.core.RawSqlStatement
-import liquibase.util.NetUtil
 import org.jboss.logging.Logger
 import org.keycloak.common.util.Time
 import org.keycloak.common.util.reflections.Reflections
 import org.keycloak.connections.jpa.updater.liquibase.LiquibaseConstants
-import org.keycloak.connections.jpa.updater.liquibase.lock.CustomInitializeDatabaseChangeLogLockTableStatement
 import org.keycloak.connections.jpa.updater.liquibase.lock.CustomLockDatabaseChangeLogStatement
 import org.keycloak.connections.jpa.updater.liquibase.lock.LockRetryException
 import org.keycloak.models.dblock.DBLockProvider
@@ -39,7 +35,7 @@ class YdbLockService : StandardLockServiceYdb() {
         throw LockRetryException(de)
       }
 
-      log.debug("Created database lock table with name: ${escapeTableName()}")
+      log.debug("Created database lock table")
 
       try {
         val field = Reflections.findDeclaredField(StandardLockService::class.java, "hasDatabaseChangeLogLockTable")
@@ -50,39 +46,18 @@ class YdbLockService : StandardLockServiceYdb() {
       }
     }
 
+    // Clean up any LOCKED=false rows left by manual intervention.
+    // With INSERT/DELETE semantics, only LOCKED=true rows (actively held locks) should exist.
     try {
-      val currentIds = currentIdsInDatabaseChangeLogLockTable()
-      val customNamespaceIds =
-        DBLockProvider.Namespace.entries.map { it.getId() }.toSet()
-      if (!currentIds.containsAll(customNamespaceIds)) {
-        log.trace("Initialize Database Lock Table, current locks $currentIds")
-        executor.execute(CustomInitializeDatabaseChangeLogLockTableStatement(currentIds))
-        database.commit()
-
-        log.debug("Initialized record in the database lock table")
-      }
-    } catch (de: DatabaseException) {
-      log.warn(
-        "Failed to insert first record to the lock table. Maybe other transaction inserted in the meantime. Retrying...",
-        de
+      executor.execute(
+        DeleteStatement(database.liquibaseCatalogName, database.liquibaseSchemaName, database.databaseChangeLogLockTableName)
+          .setWhere("LOCKED = false")
       )
-      log.trace(de.message, de)
+      database.commit()
+    } catch (de: DatabaseException) {
       database.rollback()
       throw LockRetryException(de)
     }
-  }
-
-  private fun currentIdsInDatabaseChangeLogLockTable(): Set<Int> = try {
-    val executor = Scope.getCurrentScope().getSingleton(ExecutorService::class.java)
-      .getExecutor(LiquibaseConstants.JDBC_EXECUTOR, database)
-    val sqlStatement: SqlStatement = RawSqlStatement("SELECT ${escapeIdColumnName()} FROM ${escapeTableName()}")
-
-    executor.queryForList(sqlStatement)
-      .map { columnMap -> (columnMap["ID"] as Number).toInt() }
-      .toSet()
-      .also { database.commit() }
-  } catch (ulie: UnexpectedLiquibaseException) {
-    throw ulie.cause?.takeIf { it is DatabaseException } ?: ulie
   }
 
   override fun waitForLock() {
@@ -139,37 +114,18 @@ class YdbLockService : StandardLockServiceYdb() {
     }
 
     val id = if (lockStmt is CustomLockDatabaseChangeLogStatement) lockStmt.id else DEFAULT_LOCK_ID
-    val lockedBy = "${NetUtil.getLocalHostName()} (${NetUtil.getLocalHostAddress()}):${Thread.currentThread().threadId()}"
 
     return try {
       log.debug("Trying to acquire lock id=$id")
-      val affected = executor.update(YdbLockStatement(id, lockedBy))
+      executor.execute(YdbLockStatement(id))
+      database.commit()
 
-      if (affected > 0) {
-        database.commit()
-
-        val actualLockedBy = executor
-          .queryForList(RawSqlStatement("SELECT LOCKEDBY FROM ${escapeTableName()} WHERE ID = $id AND LOCKED = true"))
-          .also { database.commit() }
-          .firstOrNull()
-          ?.get("LOCKEDBY") as? String
-
-        if (actualLockedBy == lockedBy) {
-          hasChangeLogLock = true
-          database.setCanCacheLiquibaseTableInfo(true)
-          log.debug("Successfully acquired lock id=$id")
-          true
-        } else {
-          log.debug("Lock id=$id verification failed (lockedBy in DB: $actualLockedBy)")
-          false
-        }
-      } else {
-        database.rollback()
-        log.debug("Lock id=$id is held by another transaction")
-        false
-      }
+      hasChangeLogLock = true
+      database.setCanCacheLiquibaseTableInfo(true)
+      log.debug("Successfully acquired lock id=$id")
+      true
     } catch (de: DatabaseException) {
-      log.warn("Lock acquisition failed, will retry. Details: ${de.message}")
+      log.debug("Lock id=$id is held by another transaction, will retry. Details: ${de.message}")
       try {
         database.rollback()
       } catch (_: DatabaseException) {
@@ -187,10 +143,7 @@ class YdbLockService : StandardLockServiceYdb() {
 
     database.rollback()
     try {
-      val affected = executor.update(YdbUnlockStatement(lockId))
-      if (affected != 1) {
-        log.warn("Release lock id=$lockId affected $affected rows — expected exactly 1")
-      }
+      executor.execute(YdbUnlockStatement(lockId))
       database.commit()
     } catch (e: Exception) {
       throw RuntimeException("Failed to release lock id=$lockId", e)
@@ -224,19 +177,6 @@ class YdbLockService : StandardLockServiceYdb() {
       cleanupLockState()
     }
   }
-
-  private fun escapeIdColumnName(): String? = database.escapeColumnName(
-    database.liquibaseCatalogName,
-    database.liquibaseSchemaName,
-    database.databaseChangeLogLockTableName,
-    "ID"
-  )
-
-  private fun escapeTableName(): String = database.escapeTableName(
-    database.liquibaseCatalogName,
-    database.liquibaseSchemaName,
-    database.databaseChangeLogLockTableName
-  )
 
   companion object {
     private val DEFAULT_LOCK_ID = DBLockProvider.Namespace.DATABASE.id
