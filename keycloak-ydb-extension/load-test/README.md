@@ -35,7 +35,7 @@ All commands below are run from the `keycloak-ydb-extension/` root.
 ### Option A: Keycloak + Local YDB
 
 ```bash
-./run-keycloak-with-ydb.sh
+../run-keycloak-with-ydb.sh
 ```
 
 This builds core + retry-proxy, copies the JAR, and starts Docker Compose (YDB + Keycloak + retry-proxy).
@@ -92,23 +92,122 @@ For benchmarking Keycloak with other databases (PostgreSQL, MySQL, etc.), use th
 ## 3. Setup test realm
 
 ```bash
-python3 setup-test-realm.py                       # default: http://localhost:9090
+python3 setup-test-realm.py
 ```
 
 Creates `test-realm` with clients (`gatling`, `client-0`, `test-client`), roles, groups, and test users.
 
 ## 4. Run load test
 
-```bash
-./run.sh <scenario> <users-per-sec> [measurement-sec] [server-url]
-```
+All commands are run from the `load-test/` directory.
 
-Examples:
+First, build the classpath:
 
 ```bash
-./run.sh CreateUsers 30
-./run.sh CreateUsers 30 120
+CLASSPATH=$(find lib -name '*.jar' | tr '\n' ':')
 ```
+
+---
+
+### Admin scenarios using service account (CreateUsers, CreateDeleteUsers, CreateClients, CreateDeleteClients)
+
+These scenarios authenticate via the `gatling` service account created by `setup-test-realm.py`.
+
+```bash
+java -server -Xmx1G \
+    -Dserver-url=http://localhost:9090 \
+    -Drealm-name=test-realm \
+    -Dclient-id=gatling \
+    -Dclient-secret=setup-for-benchmark \
+    -Dusers-per-sec=10 \
+    -Dmeasurement=60 \
+    -cp "$CLASSPATH" \
+    io.gatling.app.Gatling \
+    -rf results \
+    -s keycloak.scenario.admin.CreateUsers
+```
+
+Swap `-s` for any of:
+- `keycloak.scenario.admin.CreateUsers`
+- `keycloak.scenario.admin.CreateDeleteUsers`
+- `keycloak.scenario.admin.CreateClients`
+- `keycloak.scenario.admin.CreateDeleteClients`
+
+---
+
+### Admin scenarios using admin account (CreateRealms, CreateDeleteRealms, ListSessions)
+
+These scenarios authenticate as the Keycloak admin user.
+
+```bash
+java -server -Xmx1G \
+    -Dserver-url=http://localhost:9090 \
+    -Drealm-name=test-realm \
+    -Dclient-id=gatling \
+    -Dclient-secret=setup-for-benchmark \
+    -Dadmin-username=admin \
+    -Dadmin-password=admin \
+    -Dusers-per-sec=10 \
+    -Dmeasurement=60 \
+    -cp "$CLASSPATH" \
+    io.gatling.app.Gatling \
+    -rf results \
+    -s keycloak.scenario.admin.CreateRealms
+```
+
+Swap `-s` for any of:
+- `keycloak.scenario.admin.CreateRealms`
+- `keycloak.scenario.admin.CreateDeleteRealms`
+- `keycloak.scenario.admin.ListSessions`
+
+---
+
+### Authentication scenario: Client Credentials (ClientSecret)
+
+Authenticates via `client_credentials` grant — no user login required.
+
+```bash
+java -server -Xmx1G \
+    -Dserver-url=http://localhost:9090 \
+    -Drealm-name=test-realm \
+    -Dclient-id=gatling \
+    -Dclient-secret=setup-for-benchmark \
+    -Dusers-per-sec=10 \
+    -Dmeasurement=60 \
+    -cp "$CLASSPATH" \
+    io.gatling.app.Gatling \
+    -rf results \
+    -s keycloak.scenario.authentication.ClientSecret
+```
+
+---
+
+### Authentication scenarios: User Login (AuthorizationCode, LoginUserPassword)
+
+These scenarios simulate real user logins. They require `http://0.0.0.0:9090` instead of `localhost` —
+Gatling refuses to send secure cookies to localhost with Keycloak 26
+(see [keycloak-benchmark#945](https://github.com/keycloak/keycloak-benchmark/issues/945)).
+Also make sure `hostname` in `docker/conf/keycloak.conf` matches this address (see retry-proxy README).
+
+By default, users `user-0`, `user-1`, ... with passwords `user-0-password`, `user-1-password`, ... are used (created by `setup-test-realm.py`).
+
+```bash
+java -server -Xmx1G \
+    -Dserver-url=http://0.0.0.0:9090 \
+    -Drealm-name=test-realm \
+    -Dclient-id=gatling \
+    -Dclient-secret=setup-for-benchmark \
+    -Dusers-per-sec=10 \
+    -Dmeasurement=60 \
+    -cp "$CLASSPATH" \
+    io.gatling.app.Gatling \
+    -rf results \
+    -s keycloak.scenario.authentication.AuthorizationCode
+```
+
+Swap `-s` for any of:
+- `keycloak.scenario.authentication.AuthorizationCode`
+- `keycloak.scenario.authentication.LoginUserPassword`
 
 Results are saved to `results/` with Gatling HTML reports.
 
@@ -122,14 +221,18 @@ python3 delete-all-users.py
 
 ## Available Scenarios
 
-| Scenario              | Description                               |
-|-----------------------|-------------------------------------------|
-| `CreateUsers`         | Create user + List users                  |
-| `CreateDeleteUsers`   | Create user + List users + Delete user    |
-| `CreateClients`       | Create client                             |
-| `CreateDeleteClients` | Create client + Delete client             |
-| `ClientSecret`        | Client credentials grant (authentication) |
-| `AuthorizationCode`   | Authorization code flow (authentication)  |
+| Scenario | Auth method | localhost ok? |
+|---|---|:---:|
+| `keycloak.scenario.admin.CreateUsers` | service account | yes |
+| `keycloak.scenario.admin.CreateDeleteUsers` | service account | yes |
+| `keycloak.scenario.admin.CreateClients` | service account | yes |
+| `keycloak.scenario.admin.CreateDeleteClients` | service account | yes |
+| `keycloak.scenario.admin.CreateRealms` | admin account | yes |
+| `keycloak.scenario.admin.CreateDeleteRealms` | admin account | yes |
+| `keycloak.scenario.admin.ListSessions` | admin account | yes |
+| `keycloak.scenario.authentication.ClientSecret` | client credentials | yes |
+| `keycloak.scenario.authentication.AuthorizationCode` | user login | **no** — use `0.0.0.0` |
+| `keycloak.scenario.authentication.LoginUserPassword` | user login | **no** — use `0.0.0.0` |
 
 Full list of scenarios:
 [keycloak-benchmark/scenario](https://github.com/keycloak/keycloak-benchmark/tree/main/benchmark/src/main/scala/keycloak/scenario)
@@ -139,7 +242,6 @@ Full list of scenarios:
 ```
 load-test/
   prepare.sh            # Downloads keycloak-benchmark from GitHub
-  run.sh                # Runs Gatling scenario
   setup-test-realm.py   # Creates test realm, clients, users
   delete-all-users.py   # Deletes all users from realm
   lib/                  # Benchmark JARs (gitignored)
