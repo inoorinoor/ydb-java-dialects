@@ -31,6 +31,17 @@ All parameters are set via environment variables.
 | `BASE_DELAY_MS` | `50`                    | Base delay before the first retry (ms)        |
 | `MAX_DELAY_MS`  | `2000`                  | Maximum delay between retries (ms)            |
 
+### Keycloak configuration
+
+When Keycloak is deployed behind this proxy, its `hostname` setting must match the public address the proxy is exposed on — not `localhost`. Otherwise Keycloak generates login form URLs pointing to a different origin than the client connected to, which breaks the session cookie flow (`cookie_not_found`).
+
+Example (`keycloak.conf`):
+
+```properties
+proxy-headers=forwarded
+hostname=http://0.0.0.0:9090   # must match the address clients use to reach the proxy
+```
+
 ### HTTP Client
 
 | Variable                    | Default | Description                              |
