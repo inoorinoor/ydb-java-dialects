@@ -74,6 +74,7 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
         createOrUpdateSchema(schema, connection, session)
       }
     }
+    analyzeTablesIfEnabled()
     factory.create().use { session -> getOrCreateEntityManagerFactory(session) }
 
     KeycloakModelUtils.runJobInTransaction(factory) { session -> migrateModel(session) }
@@ -301,6 +302,51 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
   private fun getDatabaseUpdateFile(): File {
     val databaseUpdateFile = config.get("migrationExport", "keycloak-database-update.sql")
     return File(databaseUpdateFile)
+  }
+
+  /**
+   * Runs ANALYZE on all tables after schema creation/update to give YDB accurate cardinality
+   * statistics. Without statistics, YDB uses UINT32_MAX as default row count estimate, which
+   * causes "Mkql memory limit exceeded" errors for SELECT DISTINCT ... ORDER BY queries.
+   *
+   * Enabled via config option "analyzeOnStartup=true".
+   */
+  private fun analyzeTablesIfEnabled() {
+    if (!config.getBoolean("analyzeOnStartup", false)) {
+      return
+    }
+    val dbPath = extractDatabasePath(resolveJdbcUrl())
+    logger.infof("Running ANALYZE on YDB tables (path prefix: %s) to collect query planner statistics...", dbPath)
+    try {
+      connection.use { conn ->
+        conn.createStatement().use { stmt ->
+          conn.metaData.getTables(null, null, "%", arrayOf("TABLE")).use { rs ->
+            while (rs.next()) {
+              val tableName = rs.getString("TABLE_NAME")
+              val fullPath = "`$dbPath/$tableName`"
+              try {
+                stmt.execute("ANALYZE $fullPath")
+                logger.debugf("ANALYZE completed: %s", fullPath)
+              } catch (e: Exception) {
+                logger.warnf("ANALYZE failed for %s: %s", fullPath, e.message)
+              }
+            }
+          }
+        }
+      }
+      logger.info("ANALYZE completed for all YDB tables")
+    } catch (e: Exception) {
+      logger.warnf(e, "Failed to run ANALYZE on YDB tables, query planner will use default estimates")
+    }
+  }
+
+  private fun extractDatabasePath(jdbcUrl: String): String {
+    // jdbc:ydb:grpc://host:port/database?params → /database
+    val withoutScheme = jdbcUrl
+      .removePrefix("jdbc:ydb:grpcs://")
+      .removePrefix("jdbc:ydb:grpc://")
+    val dbWithParams = withoutScheme.substringAfter("/")
+    return "/" + dbWithParams.substringBefore("?")
   }
 
   private companion object {

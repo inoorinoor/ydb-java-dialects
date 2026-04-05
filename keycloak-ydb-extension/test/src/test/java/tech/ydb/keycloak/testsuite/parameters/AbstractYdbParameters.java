@@ -104,7 +104,8 @@ public abstract class AbstractYdbParameters extends KeycloakModelParameters {
             cf.spi("connectionsJpa")
                     .defaultProvider(PROVIDER_ID)
                     .provider(PROVIDER_ID)
-                    .config("jdbcUrl", jdbcUrl);
+                    .config("jdbcUrl", jdbcUrl)
+                    .config("analyzeOnStartup", "true");
         }
     }
 }

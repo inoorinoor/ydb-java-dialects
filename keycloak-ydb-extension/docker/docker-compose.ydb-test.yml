@@ -1,4 +1,3 @@
-
 volumes:
   ydb_test_data:
     driver: local
@@ -19,6 +18,9 @@ services:
     environment:
       - GRPC_PORT=12136  # must equal the host-side port above
       - MON_PORT=8765
+      - YDB_USE_IN_MEMORY_PDISKS=true
+      # Enable column statistics for better query planner cardinality estimates
+      - YDB_FEATURE_FLAGS=enable_column_statistics
 
 #      - YDB_USE_IN_MEMORY_PDISKS=true
 #      - YDB_ENABLE_COLUMN_TABLES=true
