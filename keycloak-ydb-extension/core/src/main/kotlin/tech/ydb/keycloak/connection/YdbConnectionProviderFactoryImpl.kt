@@ -1,5 +1,6 @@
 package tech.ydb.keycloak.connection
 
+import YdbJpaKeycloakTransaction
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import jakarta.persistence.EntityManagerFactory
@@ -25,6 +26,7 @@ import org.keycloak.models.dblock.DBLockProvider
 import org.keycloak.models.utils.KeycloakModelUtils
 import org.keycloak.provider.ServerInfoAwareProviderFactory
 import tech.ydb.hibernate.dialect.YdbDialect
+import tech.ydb.hibernate.dialect.YdbSettings
 import tech.ydb.jdbc.YdbDriver
 import tech.ydb.keycloak.config.ProviderConfig.PROVIDER_ID
 import tech.ydb.keycloak.config.ProviderConfig.PROVIDER_PRIORITY
@@ -233,7 +235,7 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
     getSchema()?.let { properties[JpaUtils.HIBERNATE_DEFAULT_SCHEMA] = it }
 
     properties["hibernate.dialect"] = YdbDialect::class.java.name
-
+    properties[YdbSettings.IGNORE_LOCK_HINTS] = true
     properties["hibernate.show_sql"] = config.getBoolean("showSql", false)
     properties["hibernate.format_sql"] = config.getBoolean("formatSql", true)
 

@@ -1,0 +1,2 @@
+tech.ydb.keycloak.testsuite.user.UserMapStorageFactory
+tech.ydb.keycloak.testsuite.user.UserPropertyFileStorageFactory

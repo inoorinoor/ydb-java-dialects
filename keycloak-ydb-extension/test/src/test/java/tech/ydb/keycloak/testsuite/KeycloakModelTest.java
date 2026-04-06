@@ -475,6 +475,24 @@ public abstract class KeycloakModelTest {
         return res.get();
     }
 
+
+    protected <T, R> R inComittedTransaction(T parameter, BiFunction<KeycloakSession, T, R> what, BiConsumer<KeycloakSession, T> onCommit, BiConsumer<KeycloakSession, T> onRollback) {
+        return KeycloakModelUtils.runJobInTransactionWithResult(getFactory(), session -> {
+            session.getTransactionManager().enlistAfterCompletion(new AbstractKeycloakTransaction() {
+                @Override
+                protected void commitImpl() {
+                    if (onCommit != null) { onCommit.accept(session, parameter); }
+                }
+
+                @Override
+                protected void rollbackImpl() {
+                    if (onRollback != null) { onRollback.accept(session, parameter); }
+                }
+            });
+            return what.apply(session, parameter);
+        });
+    }
+
     protected <R> R withRealm(String realmId, BiFunction<KeycloakSession, RealmModel, R> what) {
         return inComittedTransaction(session -> {
             final RealmModel realm = session.realms().getRealm(realmId);

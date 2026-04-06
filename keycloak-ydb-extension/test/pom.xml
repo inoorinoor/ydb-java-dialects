@@ -15,6 +15,7 @@
     <dependency>
       <groupId>tech.ydb</groupId>
       <artifactId>keycloak-ydb-extension</artifactId>
+      <scope>test</scope>
     </dependency>
 
     <!-- keycloak runtime bits needed by KeycloakSessionFactory (full server for model tests) -->
@@ -31,6 +32,7 @@
     </dependency>
     <dependency>
       <groupId>org.keycloak</groupId>
+
       <artifactId>keycloak-services</artifactId>
       <scope>test</scope>
     </dependency>
@@ -147,7 +149,7 @@
           <argLine>-Xmx1536m -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED</argLine>
           <systemPropertyVariables>
             <!-- our parameters class: enables YDB providers + starts YDB container -->
-            <keycloak.model.parameters>Ydb,YdbFederation,Infinispan</keycloak.model.parameters>
+            <keycloak.model.parameters>Ydb,YdbFederation,Infinispan,TestsuiteUserFileStorage</keycloak.model.parameters>
             <log4j.configuration>file:${project.build.directory}/test-classes/log4j.properties</log4j.configuration>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <org.jboss.logging.provider>log4j</org.jboss.logging.provider>
