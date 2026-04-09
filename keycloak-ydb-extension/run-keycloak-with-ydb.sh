@@ -18,18 +18,13 @@ cp "$JAR_FILE" docker/providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar
 echo "  JAR copied to docker/providers/"
 
 echo ""
-echo "=== Building retry-proxy ==="
-mvn -f retry-proxy/pom.xml package -q -DskipTests
-echo "  retry-proxy JAR built"
-
-echo ""
-echo "=== Starting Docker Compose (YDB + Keycloak + retry-proxy) ==="
+echo "=== Starting Docker Compose (YDB + Keycloak) ==="
 docker compose -f docker/docker-compose.yml up -d --build
 
 echo ""
 echo "Stack is starting. Wait ~30-60s for Keycloak to initialize."
 echo ""
-echo "  Keycloak (via retry-proxy): http://localhost:9090"
+echo "  Keycloak:                   http://localhost:9090"
 echo "  YDB Monitoring:             http://localhost:8765"
 echo "  Admin credentials:          admin / admin"
 echo ""
