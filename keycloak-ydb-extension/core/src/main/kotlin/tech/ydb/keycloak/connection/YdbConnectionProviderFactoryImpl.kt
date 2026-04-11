@@ -1,5 +1,7 @@
 package tech.ydb.keycloak.connection
 
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import jakarta.persistence.EntityManagerFactory
 import jakarta.persistence.SynchronizationType.SYNCHRONIZED
 import liquibase.GlobalConfiguration
@@ -45,6 +47,8 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
 
   @Volatile
   private lateinit var entityManagerFactory: EntityManagerFactory
+
+  private lateinit var dataSource: HikariDataSource
 
   override fun create(session: KeycloakSession): JpaConnectionProvider {
     val emf = getOrCreateEntityManagerFactory(session)
@@ -142,6 +146,9 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
     if (::entityManagerFactory.isInitialized) {
       entityManagerFactory.close()
     }
+    if (::dataSource.isInitialized) {
+      dataSource.close()
+    }
   }
 
   override fun getId(): String = PROVIDER_ID
@@ -215,8 +222,20 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
   private fun buildPropertiesFromScope(): MutableMap<String, Any> {
     val properties = mutableMapOf<String, Any>()
 
-    properties[AvailableSettings.JAKARTA_JDBC_URL] = jdbcUrl
-    properties[AvailableSettings.JAKARTA_JDBC_DRIVER] = YdbDriver::class.java.name
+
+    val hikariConfig = HikariConfig().apply {
+      this.jdbcUrl = jdbcUrl
+      driverClassName = YdbDriver::class.java.name
+      maximumPoolSize = config.getInt("poolSize", 50)
+      minimumIdle = config.getInt("minIdle", 10)
+      connectionTimeout = config.getLong("connectionTimeout", 30000)
+      idleTimeout = config.getLong("idleTimeout", 600000)
+      maxLifetime = config.getLong("maxLifetime", 1800000)
+    }
+    dataSource = HikariDataSource(hikariConfig)
+    logger.info("HikariCP pool created: maxSize=${hikariConfig.maximumPoolSize}, minIdle=${hikariConfig.minimumIdle}")
+
+    properties[AvailableSettings.JAKARTA_NON_JTA_DATASOURCE] = dataSource
 
     getSchema()?.let { properties[JpaUtils.HIBERNATE_DEFAULT_SCHEMA] = it }
 

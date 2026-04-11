@@ -1,0 +1,23 @@
+version: '3.4'
+
+networks:
+  keycloak:
+    driver: bridge
+
+services:
+  remote-ydb-keycloak:
+    image: quay.io/keycloak/keycloak:26.4.7
+    container_name: remote-ydb-keycloak
+    ports:
+      - '9090:8080'
+    volumes:
+      - ./providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar
+      - ./conf/keycloak-remote-ydb.conf:/opt/keycloak/conf/keycloak.conf
+    entrypoint: /opt/keycloak/bin/kc.sh
+    command: >
+      -v start-dev
+      --cache=local
+    environment:
+      - YDB_JDBC_URL=${YDB_JDBC_URL:?Set YDB_JDBC_URL, e.g. jdbc:ydb:grpc://host.docker.internal:2136/local}
+    networks:
+      - keycloak

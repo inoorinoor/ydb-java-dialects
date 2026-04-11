@@ -30,13 +30,14 @@ services:
       - MON_PORT=8765
       - YDB_KAFKA_PROXY_PORT=9092
     healthcheck:
-      test: ["CMD", "ydb", "--endpoint", "grpc://localhost:2136", "--database", "/local", "scheme", "ls"]
+      test: [ "CMD", "ydb", "--endpoint", "grpc://localhost:2136", "--database", "/local", "scheme", "ls" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  keycloak:
+  ydb-keycloak:
     image: quay.io/keycloak/keycloak:26.4.7
+    container_name: ydb-keycloak
     volumes:
       - ./providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-ydb-extension-1.0-SNAPSHOT.jar
       - ./conf/keycloak.conf:/opt/keycloak/conf/keycloak.conf
