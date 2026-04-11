@@ -41,6 +41,7 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
   private lateinit var config: Config.Scope
 
   private var jtaEnabled by Delegates.notNull<Boolean>()
+  private lateinit var jdbcUrl: String
 
   @Volatile
   private lateinit var entityManagerFactory: EntityManagerFactory
@@ -63,6 +64,9 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
 
   override fun init(scope: Config.Scope) {
     config = scope
+    jdbcUrl = requireNotNull(config["jdbcUrl"]) {
+      "YDB JDBC URL is required"
+    }
   }
 
   override fun postInit(factory: KeycloakSessionFactory) {
@@ -77,10 +81,6 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
     factory.create().use { session -> getOrCreateEntityManagerFactory(session) }
 
     KeycloakModelUtils.runJobInTransaction(factory) { session -> migrateModel(session) }
-  }
-
-  private fun resolveJdbcUrl(): String = requireNotNull(config["jdbcUrl"]) {
-    "YDB JDBC URL is required"
   }
 
   private fun createOrUpdateSchema(
@@ -150,10 +150,9 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
 
   override fun getConnection(): Connection {
     try {
-      val url = resolveJdbcUrl()
       val driver = YdbDriver::class.java.name
       Class.forName(driver)
-      return DriverManager.getConnection(url)
+      return DriverManager.getConnection(jdbcUrl)
     } catch (e: Exception) {
       throw RuntimeException("Failed to connect to database", e)
     }
@@ -216,7 +215,7 @@ class YdbConnectionProviderFactoryImpl : JpaConnectionProviderFactory, ServerInf
   private fun buildPropertiesFromScope(): MutableMap<String, Any> {
     val properties = mutableMapOf<String, Any>()
 
-    properties[AvailableSettings.JAKARTA_JDBC_URL] = resolveJdbcUrl()
+    properties[AvailableSettings.JAKARTA_JDBC_URL] = jdbcUrl
     properties[AvailableSettings.JAKARTA_JDBC_DRIVER] = YdbDriver::class.java.name
 
     getSchema()?.let { properties[JpaUtils.HIBERNATE_DEFAULT_SCHEMA] = it }
